@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+alembic upgrade head
+
+if [ "$ENVIRONMENT" == "dev" ]
+then
+    uvicorn main:app --reload --reload-dir project --host 0.0.0.0
+else
+    uvicorn main:app --host 0.0.0.0
+fi

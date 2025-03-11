@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# if any of the commands in your code fails for any reason, the entire script fails
+set -o errexit
+# fail exit if one of your pipe command fails
+set -o pipefail
+# exits if any of your variables is not set
+set -o nounset
+
+db_ready() {
+python << END
+import sys
+
+import asyncio
+import asyncpg
+import urllib.parse as urlparse
+import os
+
+url = urlparse.urlparse(os.environ['DATABASE_URL'])
+database = url.path[1:]
+user = url.username
+password = url.password
+host = url.hostname
+port = url.port
+
+async def test_conn():
+    try:
+        await asyncpg.connect(
+            database=database,
+            user=user,
+            password=password,
+            host=host,
+            port=port
+        )
+    except (Exception, asyncpg.ConnectionFailureError) as error:
+        sys.exit(-1)
+    sys.exit(0)
+
+asyncio.run(test_conn())
+
+END
+}
+until db_ready; do
+  >&2 echo 'Waiting for Databases to become available...'
+  sleep 1
+done
+>&2 echo 'Databases are available'
+
+exec "$@"

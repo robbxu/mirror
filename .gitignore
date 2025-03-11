@@ -1,0 +1,11 @@
+**/env
+**/data
+.venv
+.env.*
+.DS_Store
+server/venv/*
+__pycache__/
+server/backend/__pycache__/
+server/backend/venv/*
+server/backend/db.sqlite3
+.windsurfrules

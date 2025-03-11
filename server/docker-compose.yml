@@ -1,0 +1,98 @@
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: ./compose/fastapi/Dockerfile
+    image: red_web
+    # '/start' is the shell script used to run the service
+    command: /backend/start
+    # Mapped volumes are used to map the files and folders on the host to the container
+    # so if we change code on the host, code in the docker container will also be changed
+    # however, we can't use this in remote docker contexts. See below
+    # https://stackoverflow.com/questions/72831419/can-not-copy-local-directory-to-remote-container-with-docker-using-docker-contex
+    ports:
+      - 8010:8000
+    volumes:
+      - temp_storage:/temp_storage
+    env_file:
+      - backend/env/.env.${ENVIRONMENT}
+    depends_on:
+      - redis
+      - db
+
+  db:
+    build:
+      context: .
+      dockerfile: ./compose/db/Dockerfile
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_DB=red-dawn
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=secretkey
+  
+  db-test:
+    build:
+      context: .
+      dockerfile: ./compose/db/Dockerfile
+    ports:
+      - 5431:5432
+    environment:
+      - POSTGRES_DB=test
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=secretkey
+
+  redis:
+    image: redis:7-alpine
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: ./compose/fastapi/Dockerfile
+    image: red_worker
+    command: /backend/start-celeryworker
+    volumes:
+      - temp_storage:/temp_storage
+    env_file:
+      - backend/env/.env.${ENVIRONMENT}
+    depends_on:
+      - redis
+      - db
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: ./compose/fastapi/Dockerfile
+    image: red_beat
+    command: /backend/start-celerybeat
+    env_file:
+      - backend/env/.env.${ENVIRONMENT}
+    depends_on:
+      - redis
+      - db
+
+  flower:
+    build:
+      context: .
+      dockerfile: ./compose/fastapi/Dockerfile
+    image: red_flower
+    command: /backend/start-flower
+    env_file:
+      - backend/env/.env.${ENVIRONMENT}
+    ports:
+      - 5557:5555
+    depends_on:
+      - redis
+      - db
+
+# We need a volume in the docker container itself to persist database information between runs
+# Note that these volumes are only shared on the same host (machine) where all our container are running
+# If we need to scale horizontally (Kubernetes) we should need to configure these as their own cluster
+# of services or used managed instances like Cloudflare R2 for file storage + Postgres
+# https://stackoverflow.com/questions/68647242/define-volumes-in-docker-compose-yaml
+volumes:
+  postgres_data:
+  temp_storage:
