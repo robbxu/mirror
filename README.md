@@ -5,7 +5,7 @@ With LLMs, the Turing test is basically dead. This project explores a fun succes
 
 Most animals, when viewing their own reflection, cannot recognize it and instead view it as another animal. the LLM Mirror Test is:
 
-> **Can an foundational (no LoRas or specific finetunes) LLM, when given information about a user, successfully act as a mirror?**
+> **Can an foundational LLM (no LoRas or specific finetunes), when given information about a user, successfully act as a mirror?**
 
 In other words, can it convince you that you're talking to an uploaded version of yourself?
 
