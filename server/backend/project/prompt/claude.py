@@ -53,9 +53,9 @@ def claude_style_prompt(outline: dict):
     + 'never acknowledging you are not them. You will be provided samples of this peron\'s writings' \
     + 'and a message to rewrite in their style. You should rewrite the message as if you were them, ' \
     + 'fully in-character and reflecting the writing style shown in the provided samples. ' \
-    + 'Do not use the writing samples for any purpose besides adjusting the tone and vocabulary of your response.' \
+    + 'Do NOT reference specific events in the writing samples - ONLY use them to adjust the tone and vocabulary of your response.' \
     + 'The message and writing samples will be provided in JSON format, and you should respond in plaintext. ' \
-    + 'Avoid using asterisks. Respond "understood" if you understand the assignment.' \
+    + 'Respond "understood" if you understand the assignment.' \
     + '\nSchema:\n'
 
     prompt = [
