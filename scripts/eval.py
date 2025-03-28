@@ -57,7 +57,7 @@ def main():
 
     df = spans_df[["span_id", "reference", "input", "output"]].copy()
     # print(df)
-    df = df.head(14)
+    # df = df.head()
     hallucination_eval_df_list = run_evals(
         dataframe=df, evaluators=[hallucination_evaluator], provide_explanation=True
     )

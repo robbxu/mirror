@@ -19,8 +19,4 @@ if [[ "$mode" = "dev" ]]; then
   echo "Project running. Visit http://localhost:8010/api/v1 to utilize API"
   # Static domain associated with ngrok account @robbxu gmail
   ngrok http --url=frankly-growing-urchin.ngrok-free.app 8010
-elif [[ "$mode" = "prod" ]]; then
-  docker context use mirror
-  docker compose -f docker-compose.yml -p red-dawn up -d --build
-  echo "Project running. Visit https://the-koi.ai/api/v1 to utilize API"
 fi

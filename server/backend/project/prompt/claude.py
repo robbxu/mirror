@@ -10,7 +10,7 @@ from openinference.instrumentation.langchain import LangChainInstrumentor
 # from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
   
-tracer_provider = register() 
+tracer_provider = register(project_name="mirror") 
 
 LangChainInstrumentor().instrument(tracer_provider=tracer_provider)
 

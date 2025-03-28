@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from project.interact.models import Memory, Exchange, Interaction
 from project.analysis.utils import truncate
-from project.analysis import tasks
 
 ALLOWED_EXTENSIONS = {
     '.txt',  # Text files

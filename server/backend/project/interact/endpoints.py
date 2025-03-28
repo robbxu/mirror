@@ -18,6 +18,7 @@ from project.analysis import tasks
 
 from opentelemetry import trace
 from opentelemetry.propagate import inject, extract
+from opentelemetry.trace import Status, StatusCode
 
 interact_router = APIRouter(
     prefix="/interact",
@@ -39,29 +40,46 @@ async def message_self(request: Request, session: AsyncSession = Depends(get_db_
     message = data["message"].strip()
     history.append({"role": "user", "content": message} )
     context = extract_context(history, 1000)
-    context_embedding = voyage_embedding([context], query=False)
     
-    topic_ids = await get_topics(context_embedding, session)
-    knowledge_dict = await extract_knowledge(context_embedding, topic_ids, session)
-
     tracer = trace.get_tracer(__name__)
-    with tracer.start_as_current_span("INTERACTION") as span:
-        span.set_attribute("openinference.span.kind", "CHAIN")
-        knowledge = format_knowledge(knowledge_dict) 
-        belief_prompt = claude_belief_prompt(knowledge, history)
-        generation = claude_call(belief_prompt)
-        
-        rows = (await session.execute(
-            select(Memory.text)
-        )).all()
-        memories = [row[0] for row in rows]
-        sample = random.sample(memories, 3)
-        outline = {
-            "message": generation,
-            "writing_samples": sample
-        }
-        outline = claude_style_prompt(outline)
-        generation = claude_call(outline)
+    with tracer.start_as_current_span("interact_message", openinference_span_kind="chain") as span:
+        span.set_input({"prompt": data})
+        with tracer.start_as_current_span("get_knowledge", openinference_span_kind="retriever") as retrieve_span:
+            retrieve_span.set_input({"context": context})
+            context_embedding = voyage_embedding([context], query=False)
+            topic_ids = await get_topics(context_embedding, session)
+            knowledge_dict = await extract_knowledge(context_embedding, topic_ids, session)
+            knowledge = format_knowledge(knowledge_dict)
+
+            for topic in knowledge_dict:
+                for i in range(len(knowledge_dict[topic]["beliefs"])):
+                    retrieve_span.set_attribute(f"retrieval.documents.{i}.document.content", "\n\n".join(knowledge_dict[topic]["beliefs"][i]["memories"]))
+                    retrieve_span.set_attribute(f"retrieval.documents.{i}.document.id", knowledge_dict[topic]["beliefs"][i]["belief"])
+            retrieve_span.set_status(StatusCode.OK)
+            
+        with tracer.start_as_current_span("gen_beliefs", openinference_span_kind="llm") as belief_span:
+            belief_span.set_input({"knowledge": knowledge})
+            belief_prompt = claude_belief_prompt(knowledge, history)
+            generation = claude_call(belief_prompt)
+            belief_span.set_output({"result": str(generation)})
+
+        with tracer.start_as_current_span("gen_styles", openinference_span_kind="llm") as style_span:
+            style_span.set_input({"beliefs": generation})
+            rows = (await session.execute(
+                select(Memory.text)
+            )).all()
+            memories = [row[0] for row in rows]
+            sample = random.sample(memories, 1)
+            outline = {
+                "message": generation,
+                "writing_samples": sample
+            }
+            outline = claude_style_prompt(outline)
+            generation = claude_call(outline)
+            style_span.set_output({"result": str(generation)})
+    
+        span.set_output({"result": str(generation)})
+        span.set_status(StatusCode.OK)
     await record_exchange(message, generation, data["id"], session)
     return {"response": generation}
 
@@ -188,14 +206,12 @@ async def upload_memories(file: UploadFile = File(...)) -> dict:
     content = await file.read()
     tracer = trace.get_tracer(__name__)
     with tracer.start_as_current_span("UPLOAD") as span:
-        span.set_attribute("openinference.span.kind", "CHAIN")
+        span.set_input({"filename": file.filename, "content_size": len(content)})
         headers = {}
         inject(headers)
         # celery task
         pipe = chain(tasks.gen_file_memories.s(content, file.filename), 
                     tasks.gen_new_knowledge.s(headers=headers),
                     tasks.cluster_memories.s()).apply_async()
-    
+        span.set_status(StatusCode.OK)
     return {"task_id": str(pipe.id)}
-
-

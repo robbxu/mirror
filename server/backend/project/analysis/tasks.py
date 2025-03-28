@@ -15,6 +15,7 @@ from project.analysis.schemas import get_belief_analysis_schema
 
 from opentelemetry.propagate import inject, extract
 from opentelemetry import trace
+from opentelemetry.trace.status import StatusCode
 
 
 # https://stackoverflow.com/questions/39815771/how-to-combine-celery-with-asyncio
@@ -74,6 +75,9 @@ def gen_new_knowledge(memory_ids: list, headers):
                     analysis_prompt = claude_belief_analysis(schema, text)
                     analysis_raw = claude_call(analysis_prompt)
                     analysis = json.loads(analysis_raw)
+                    span.set_input({"text": text, "schema": schema})
+                    span.set_output({"analysis": analysis})
+                    span.set_status(StatusCode.OK)
 
                 analysis = analysis["topics"]["topics"]
                 for item in analysis:
@@ -204,4 +208,3 @@ def cluster_memories(memory_ids: list):
         except Exception as exc:
             db_session.rollback()
             print(exc)
-
