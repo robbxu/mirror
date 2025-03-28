@@ -62,6 +62,7 @@ async def message_self(request: Request, session: AsyncSession = Depends(get_db_
             belief_prompt = claude_belief_prompt(knowledge, history)
             generation = claude_call(belief_prompt)
             belief_span.set_output({"result": str(generation)})
+            belief_span.set_status(StatusCode.OK)
 
         with tracer.start_as_current_span("gen_styles", openinference_span_kind="llm") as style_span:
             style_span.set_input({"beliefs": generation})
@@ -77,6 +78,7 @@ async def message_self(request: Request, session: AsyncSession = Depends(get_db_
             outline = claude_style_prompt(outline)
             generation = claude_call(outline)
             style_span.set_output({"result": str(generation)})
+            style_span.set_status(StatusCode.OK)
     
         span.set_output({"result": str(generation)})
         span.set_status(StatusCode.OK)

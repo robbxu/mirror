@@ -3,7 +3,13 @@ from math import floor
 import json
 import phoenix as px
 from phoenix.trace import SpanEvaluations
-from phoenix.evals import HallucinationEvaluator, OpenAIModel, QAEvaluator, run_evals
+from phoenix.evals import HallucinationEvaluator, OpenAIModel, run_evals
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'server', 'backend', 'env', '.env.dev')
+load_dotenv(env_path)
 
 eval_model = OpenAIModel(model="gpt-4o", timeout=600)
 
@@ -47,7 +53,7 @@ def process_output(row):
 
 
 def main():
-    spans_df = client.get_spans_dataframe("parent_id is not None")
+    spans_df = client.get_spans_dataframe(project_name="mirror", filter_condition="span_kind == 'LLM' and metadata is not None")
     spans_df["message"] = spans_df["attributes.llm.input_messages"]
     spans_df['span_id'] = spans_df["context.span_id"]
 
